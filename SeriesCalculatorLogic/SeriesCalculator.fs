@@ -2,19 +2,26 @@
 
 
 module SeriesCalculator = 
-    
+    let limitStarterNumber = 1000000000m
+    let firstSpecialPosition = 3
+        
     type Result=
     | Series of List<decimal>
     | Value of decimal
     | Error of string
 
-    let getFirstNumber number = 
-        Value(((0.5m * pown number 2 ) + (30.0m * number) + 10.0m) / 25.0m)
+    let isPassLimit number = 
+        number > limitStarterNumber || number < -limitStarterNumber
 
-    let getGrowthRate firstNumber y =
+    let getFirstNumber starterNumber = 
+        match starterNumber with
+        | number when isPassLimit number -> Error "Number is too big for the system"
+        | number -> Value(((0.5m * pown number 2 ) + (30.0m * number) + 10.0m) / 25.0m)
+
+    let getGrowthRate firstNumber growthModifier =
         match firstNumber with
-        | Value x when x = 0m -> Error "The initial number is 0, which would create an invalid growth rate"
-        | Value x -> Value(2.0m * y / 100.0m / 25.0m / x)
+        | Value number when number = 0m -> Error "The initial number is 0, which would create an invalid growth rate"
+        | Value number -> Value(2.0m * growthModifier / 100.0m / 25.0m / number)
         | _ -> Error "Unexpected input for the getGrowthRate function"
 
     let getSeries firstNumber growthRate length =
@@ -38,7 +45,7 @@ module SeriesCalculator =
                 | x when x > 0.375m && x <= 0.625m -> truncated + 0.5m
                 | x when x > 0.625m && x <= 0.875m -> truncated + 0.75m
                 | x when x > 0.875m -> truncated + 1m
-                | _ -> failwith "How we have come here?"
+                | _ -> failwith "How we have come here? It should never reach due to the use decimals"
             
             Series(
                 [1..length]
@@ -50,19 +57,20 @@ module SeriesCalculator =
         match inputSeries with
         | Error x -> Error x
         | Value x -> Error "A value is not expected here"
+        | Series series when series.Length < firstSpecialPosition -> Error "The series is too small to produce the first special number"
         | Series series ->
-            if series.Length > 2 then
-                let converted = series |> List.toArray
-                Value converted.[series.Length - 3]
-            else
-                Error "The series is too small to produce the first special number"
+            let converted = series |> List.toArray
+            Value converted.[series.Length - firstSpecialPosition]
 
     let getSecondSpecialNumber z inputSeries =
-        match inputSeries with
-        | Error x -> Error x
-        | Value x -> Error "A value is not expected here"
-        | Series series ->
-            let approximateNumber = 1000m /z
+        match (z, inputSeries) with
+        | (_, Error x) -> Error x
+        | (_, Value x) -> Error "A value is not expected here"
+        | (number, _) when number = 0m -> Error "The passed number will create an invalid"
+        | (_, Series series) when series.Length < 1 -> Error "The series is too small to produce the second special number"
+        | (number, Series series) ->
+            
+            let approximateNumber = 1000m / number
 
             let getDistance number =
                 System.Math.Abs(number - approximateNumber)
